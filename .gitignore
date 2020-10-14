@@ -1,0 +1,4 @@
+.idea/
+venv/
+db/articles.db
+__pycache__/

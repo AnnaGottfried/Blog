@@ -1,0 +1,12 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+<div class="jumbotron text-center">
+    <h1> Witam na moim Blogu  </h1>
+    <p class="lead"> Tylko osoby zarejestrowane i zalogowane mogą dokonywać wpisów. </p>
+    {% if session.logged_in!=True %}
+        <a href="/register" class="btn btn-primary btn-lg">Zarejestruj się</a>
+        <a href="/login" class="btn btn-success btn-lg">Logowanie</a>
+    {% endif %}
+</div>
+{%endblock%}
