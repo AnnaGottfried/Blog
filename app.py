@@ -1,5 +1,5 @@
 from flask import Flask, render_template,flash, redirect, request, url_for, session, logging
-from wtforms import Form,StringField,TextAreaField,PasswordField, validators
+from wtforms import Form,StringField,TextAreaField,PasswordField, BooleanField, validators
 from passlib.hash import sha256_crypt
 import sqlite3
 import os
@@ -30,6 +30,7 @@ class RegisterForm(Form):
 class ArticleForm(Form):
     title=StringField('Tytuł',[validators.Length(min=1,max=50)])
     body = TextAreaField('Treść', [validators.Length(min=30)])
+    publish =BooleanField('Publikacja')
 
 
 @app.route('/register', methods=['GET','POST'])
@@ -112,7 +113,25 @@ def login():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # create cursor
+    conn = create_connection()
+    # create cursor
+    c = conn.cursor()
+
+    # get articles
+
+    result = c.execute("SELECT * from items")
+    if result:
+        articles = c.fetchall()
+
+        return render_template('index.html', articles=articles)
+    else:
+        msg = "Nie ma żadnych wpisów"
+    return render_template('index.html', msg=msg)
+
+    conn.close()
+
+
 
 @app.route('/about')
 def about():
@@ -154,18 +173,30 @@ def edit_article(id):
 
         form.title.data=article[1]
         form.body.data=article[2]
+        form.publish.data=article[5]
 
         if request.method == 'POST':
             title = request.form['title']
             body = request.form['body']
+            publish=request.form.get('publish')
             create_date = date.today()
+
+           # print(publish)
+            if publish != None:
+                publish=1
+            else:
+                publish=0
+
+            #print(publish)
 
 
             # create cursor
            # conn = create_connection()
             c = conn.cursor()
 
-            c.execute("UPDATE items SET title=?, body =?, author =?, create_date =? WHERE id=?",(title,body,session['username'],create_date,id))
+
+
+            c.execute("UPDATE items SET title=?, body =?, author =?, create_date =?, publish =? WHERE id=?",(title,body,session['username'],create_date,publish,id))
             conn.commit()
             conn.close()
             flash("Wpis zaktualizowany", "success")
@@ -260,11 +291,12 @@ def add_article():
             title=form.title.data
             body=form.body.data
             create_date = date.today()
+            publish=form.publish.data
 
             #create cursor
             conn = create_connection()
             c = conn.cursor()
-            c.execute("INSERT INTO items(title,body,author,create_date) VALUES (?,?,?,?)", (title,body, session['username'], create_date))
+            c.execute("INSERT INTO items(title,body,author,publish, create_date) VALUES (?,?,?,?,?)", (title,body, session['username'],publish, create_date))
             conn.commit()
             conn.close()
             flash('Wpis stworzony','success')
