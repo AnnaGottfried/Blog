@@ -1,23 +1,53 @@
-from flask import Flask, render_template,flash, redirect, request, url_for, session, logging
+from flask import Flask, render_template,flash, redirect, request, url_for, session
 from wtforms import Form,StringField,TextAreaField,PasswordField, BooleanField, validators
 from passlib.hash import sha256_crypt
-import sqlite3
-import os
 from datetime import date
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
+
+app = Flask(__name__)
+app.secret_key = "super secret key"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/users.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+# import models
+class User(db.Model):
+    __tablename__ = 'user'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), index=True, unique=True)
+    email = db.Column(db.String(200), index=True, unique=True)
+    username = db.Column(db.String(100), index=True, unique=True)
+    password = db.Column(db.String(128))
+
+
+class Items(db.Model):
+    __tablename__ = 'items'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.Text)
+    body = db.Column(db.String(500), index=True, unique=False)
+    author= db.Column(db.String(100), index=True, unique=True)
+    create_date = db.Column(db.String(128))
+    publish= db.Column(db.String(2), unique=False)
 
 
 
 
+
+'''
+imported from __init__.py
 app=Flask(__name__)
 app.secret_key = "super secret key"
 # inna metoda
 
+# instead of function - connection to db through SQLAlchemy
 def create_connection():
     db_abs_path = os.path.dirname(os.path.realpath(__file__)) + 'db/users.db'
     conn = sqlite3.connect('db/users.db', check_same_thread=False)
     return conn
 
-
+'''
 
 class RegisterForm(Form):
     name=StringField('Imię i nazwisko ',[validators.Length(min=1,max=50)])
@@ -42,6 +72,22 @@ def register():
         username=form.username.data
         password=sha256_crypt.encrypt(str(form.password.data))
 
+        # adding user to database
+        user = User(
+            name=name,
+            email=email,
+            username=username,
+            password=password,
+
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash('Jesteś już zarejestrowany - możesz się logować', 'success')
+        return redirect(url_for("index"))
+
+    return render_template('register.html', form=form)
+
+'''  sql light code
         # create cursor
         conn = create_connection()
         c = conn.cursor()
@@ -55,11 +101,12 @@ def register():
 
         # close connection
         conn.close()
+'''
 
-        flash('Jesteś już zarejestrowany - możesz się logować', 'success')
-        return redirect(url_for("index"))
 
-    return render_template('register.html', form=form)
+
+
+
 
 # user login
 @app.route('/login', methods=['GET','POST'])
@@ -69,19 +116,11 @@ def login():
         username=request.form['username']
         password_candidate=request.form['password']
 
-        conn = create_connection()
-        # create cursor
-        c = conn.cursor()
+        data = User.query.filter_by(username=username).first()
 
-        # get user by username
-        # execute
-
-        result=c.execute("SELECT * FROM users WHERE username=?", (username,))
-
-        data = c.fetchone()
 
         if data:
-            password=data[4]
+            password=data.password
 
 
 
@@ -98,7 +137,7 @@ def login():
             else:
                 error='Błedne dane logowania'
                 return render_template('login.html',error=error)
-                conn.close()
+                #conn.close()
 
 
         else:
@@ -109,27 +148,62 @@ def login():
 
     return render_template('login.html')
 
+'''sql light code
+        conn = create_connection()
+        # create cursor
+        c = conn.cursor()
+
+        # get user by username
+        # execute
+
+        result=c.execute("SELECT * FROM users WHERE username=?", (username,))
+
+        data = c.fetchone()
+'''
+
+
 
 
 @app.route('/')
 def index():
-    # create cursor
-    conn = create_connection()
-    # create cursor
-    c = conn.cursor()
+    articles = Items.query.all()
 
-    # get articles
-
-    result = c.execute("SELECT * from items")
-    if result:
-        articles = c.fetchall()
-
+    if len(articles)>0:
         return render_template('index.html', articles=articles)
-    else:
+
+    msg = "Nie ma żadnych wpisów"
+    return render_template('index.html', msg=msg)
+
+
+
+'''
+    
+    #articles=""
+    #return render_template('index.html', articles=articles)
+    #result=True
+
+
+    #if result:
+
+    #articles = Items.query.all()
+        #articles = c.fetchall()
+
+    #return render_template('index.html', articles=articles)
+else:
         msg = "Nie ma żadnych wpisów"
     return render_template('index.html', msg=msg)
 
-    conn.close()
+# sql light code -create cursor
+        conn = create_connection()
+        # create cursor
+        c = conn.cursor()
+
+        # get articles
+
+        result = c.execute("SELECT * from items")
+        #conn.close()
+'''
+
 
 
 
@@ -139,7 +213,7 @@ def about():
 
 @app.route('/articles')
 def articles():
-    # create cursor
+    '''# create cursor
     conn = create_connection()
     # create cursor
     c = conn.cursor()
@@ -147,19 +221,23 @@ def articles():
     # get articles
 
     result = c.execute("SELECT * from items")
+    '''
+
+    result=True
     if result:
-        articles = c.fetchall()
+        # articles = c.fetchall()
+        articles = Items.query.all()
 
         return render_template('articles.html', articles=articles)
     else:
         msg="Nie znaleziono wpisów"
     return render_template('articles.html',msg=msg)
 
-    conn.close()
+    #conn.close()
 
 @app.route('/edit_article/<string:id>', methods=['GET','POST'])
 def edit_article(id):
-    # create cursor
+    '''# create cursor
     conn = create_connection()
     # create cursor
     c = conn.cursor()
@@ -167,13 +245,23 @@ def edit_article(id):
     # get articles
 
     result = c.execute("SELECT * from items WHERE id=?", (id,))
+
+
+    '''
+
+    result=True
     if result:
-        article = c.fetchone()
+        #article = c.fetchone()
+        article = Items.query.filter_by(id=id).first()
         form=ArticleForm(request.form)
 
-        form.title.data=article[1]
-        form.body.data=article[2]
-        form.publish.data=article[5]
+        #form.title.data=article[1]
+        #form.body.data=article[2]
+        #form.publish.data=article[5]
+
+        form.title.data = article.title
+        form.body.data = article.body
+        form.publish.data = article.publish
 
         if request.method == 'POST':
             title = request.form['title']
@@ -187,18 +275,26 @@ def edit_article(id):
             else:
                 publish=0
 
+            article.title = title
+            article.body = body
+            article.publish = publish
+            article.create_date=create_date
+            db.session.commit()
+
             #print(publish)
 
 
             # create cursor
            # conn = create_connection()
-            c = conn.cursor()
+            #c = conn.cursor()
 
 
 
-            c.execute("UPDATE items SET title=?, body =?, author =?, create_date =?, publish =? WHERE id=?",(title,body,session['username'],create_date,publish,id))
+
+            '''c.execute("UPDATE items SET title=?, body =?, author =?, create_date =?, publish =? WHERE id=?",(title,body,session['username'],create_date,publish,id))
             conn.commit()
             conn.close()
+            '''
             flash("Wpis zaktualizowany", "success")
 
             return redirect(url_for('dashboard'))
@@ -213,7 +309,7 @@ def edit_article(id):
 
 @app.route('/delete_article/<string:id>', methods=['POST'])
 def delete_article(id):
-    # create cursor
+    '''# create cursor
     conn = create_connection()
     # create cursor
     c = conn.cursor()
@@ -222,7 +318,12 @@ def delete_article(id):
 
     result = c.execute("DELETE from items WHERE id=?", (id,))
     conn.commit()
-    conn.close()
+    conn.close()'''
+
+    article = Items.query.filter_by(id=id).first()
+    db.session.delete(article)
+    db.session.commit()
+
     flash("Wpis usunięty", "success")
 
     return redirect(url_for('dashboard'))
@@ -235,6 +336,7 @@ def delete_article(id):
 
 @app.route('/articles/<string:id>/')
 def article(id):
+    '''
     # create cursor
     conn = create_connection()
     # create cursor
@@ -243,8 +345,13 @@ def article(id):
     # get article
 
     result = c.execute("SELECT * from items WHERE id=?",(id,))
+    '''
+    result=True
+
+
     if result:
-        article = c.fetchone()
+        #article = c.fetchone()
+        article = Items.query.filter_by(id=id).first()
 
         return render_template('article.html', article=article)
 
@@ -254,7 +361,7 @@ def article(id):
 def dashboard():
     if session['logged_in']==True:
 
-        #create cursor
+        '''#create cursor
         conn = create_connection()
         # create cursor
         c = conn.cursor()
@@ -262,15 +369,17 @@ def dashboard():
         # get articles
 
         result = c.execute("SELECT * from items")
+        '''
+        result=True
         if result:
-            articles=c.fetchall()
-
-            return render_template('dashboard.html', articles=articles)
+           # articles=c.fetchall()
+           articles = Items.query.all()
+           return render_template('dashboard.html', articles=articles)
         else:
             message='Nie znaleziono artykułu'
             return render_template('dashboard.html', msg=message)
 
-        conn.close()
+        #conn.close()
     else:
         flash('Brak autoryzacji, proszę się zalogować', 'danger')
         return redirect(url_for('login'))
@@ -293,12 +402,23 @@ def add_article():
             create_date = date.today()
             publish=form.publish.data
 
-            #create cursor
+            '''#create cursor
             conn = create_connection()
             c = conn.cursor()
             c.execute("INSERT INTO items(title,body,author,publish, create_date) VALUES (?,?,?,?,?)", (title,body, session['username'],publish, create_date))
             conn.commit()
-            conn.close()
+            conn.close()'''
+
+            item = Items(
+                title=title,
+                body=body,
+                author=session['username'],
+                publish=publish,
+                create_date=create_date
+
+            )
+            db.session.add(item)
+            db.session.commit()
             flash('Wpis stworzony','success')
             return redirect(url_for('dashboard'))
 

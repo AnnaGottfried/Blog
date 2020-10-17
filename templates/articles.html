@@ -4,8 +4,8 @@
     <h1> Wpisy </h1>
     <ul class="list-group">
          {% for article in articles %}
-            {% if article[5]==1 %}
-           <li class="list-group-item"><a href="articles/{{article[0]}}"> {{article[1]}} </a></li>
+            {% if article.publish==1 %}
+           <li class="list-group-item"><a href="articles/{{article.id}}"> {{article.title}} </a></li>
             {% endif %}
     {% endfor %}
     </ul>

@@ -15,10 +15,10 @@
 
     <ul class="list-group">
          {% for article in articles %}
-            {% if article[5]==1 %}
-        <li class="list-group-item"><b>{{article[1]}}</b> </li>
-        <li class="list-group-item"> {{article[4] }}</li>
-          <li class="list-group-item"> {{article[2] | safe}}</li>
+            {% if article.publish==1 %}
+        <li class="list-group-item"><b>{{article.title}}</b> </li>
+        <li class="list-group-item"> {{article.create_date }}</li>
+          <li class="list-group-item"> {{article.body | safe}}</li>
 
             {% endif %}
 
