@@ -11,8 +11,8 @@ app.secret_key = "super secret key"
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-# import models
+
+# models
 class User(db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
@@ -32,23 +32,9 @@ class Items(db.Model):
     publish= db.Column(db.String(2), unique=False)
 
 
+migrate = Migrate(app, db)
 
-
-
-'''
-imported from __init__.py
-app=Flask(__name__)
-app.secret_key = "super secret key"
-# inna metoda
-
-# instead of function - connection to db through SQLAlchemy
-def create_connection():
-    db_abs_path = os.path.dirname(os.path.realpath(__file__)) + 'db/users.db'
-    conn = sqlite3.connect('db/users.db', check_same_thread=False)
-    return conn
-
-'''
-
+# registration form
 class RegisterForm(Form):
     name=StringField('Imię i nazwisko ',[validators.Length(min=1,max=50)])
     username = StringField('Nazwa użytkownika', [validators.Length(min=4, max=25)])
@@ -56,7 +42,7 @@ class RegisterForm(Form):
     password = PasswordField('Hasło', [validators.data_required(), validators.equal_to('confirm', message='password do not match')])
     confirm = PasswordField('Potwierdź hasło')
 
-# article form
+# blog form
 class ArticleForm(Form):
     title=StringField('Tytuł',[validators.Length(min=1,max=50)])
     body = TextAreaField('Treść', [validators.Length(min=30)])
@@ -178,22 +164,8 @@ def index():
 
 '''
     
-    #articles=""
-    #return render_template('index.html', articles=articles)
-    #result=True
-
-
-    #if result:
-
-    #articles = Items.query.all()
-        #articles = c.fetchall()
-
-    #return render_template('index.html', articles=articles)
-else:
-        msg = "Nie ma żadnych wpisów"
-    return render_template('index.html', msg=msg)
-
-# sql light code -create cursor
+ 
+    # sql light code -create cursor
         conn = create_connection()
         # create cursor
         c = conn.cursor()
@@ -201,6 +173,18 @@ else:
         # get articles
 
         result = c.execute("SELECT * from items")
+
+    #if result:
+
+    
+        #articles = c.fetchall()
+
+    #return render_template('index.html', articles=articles)
+else:
+        msg = "Nie ma żadnych wpisów"
+    return render_template('index.html', msg=msg)
+
+
         #conn.close()
 '''
 
@@ -223,8 +207,8 @@ def articles():
     result = c.execute("SELECT * from items")
     '''
 
-    result=True
-    if result:
+    result=len(Items.query.all())
+    if result>0:
         # articles = c.fetchall()
         articles = Items.query.all()
 
@@ -249,8 +233,8 @@ def edit_article(id):
 
     '''
 
-    result=True
-    if result:
+    result=Items.query.filter_by(id=id).all()
+    if len(result)>0:
         #article = c.fetchone()
         article = Items.query.filter_by(id=id).first()
         form=ArticleForm(request.form)
@@ -346,10 +330,10 @@ def article(id):
 
     result = c.execute("SELECT * from items WHERE id=?",(id,))
     '''
-    result=True
+    result=Items.query.filter_by(id=id).all()
 
 
-    if result:
+    if len(result)>0:
         #article = c.fetchone()
         article = Items.query.filter_by(id=id).first()
 
@@ -370,8 +354,8 @@ def dashboard():
 
         result = c.execute("SELECT * from items")
         '''
-        result=True
-        if result:
+        result=Items.query.all()
+        if len(result)>0:
            # articles=c.fetchall()
            articles = Items.query.all()
            return render_template('dashboard.html', articles=articles)
