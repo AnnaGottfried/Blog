@@ -21,16 +21,18 @@ class User(db.Model):
     email = db.Column(db.String(200), index=True, unique=True)
     username = db.Column(db.String(100), index=True, unique=True)
     password = db.Column(db.String(128))
+    articles = db.relationship("Items", backref='author')
 
 
 class Items(db.Model):
     __tablename__ = 'items'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.Text)
-    body = db.Column(db.String(500), index=True)
-    author= db.Column(db.String(100), index=True)
+    body = db.Column(db.String(500))
+    author_id= db.Column(db.Integer,db.ForeignKey('user.id'))
     create_date = db.Column(db.String(128))
     publish= db.Column(db.Boolean(), default=False, nullable=True)
+
 
 migrate = Migrate(app, db)
 
@@ -97,26 +99,6 @@ def register():
         errors=form.errors
         return render_template('register.html', errors=errors,form=form)
 
-'''  sql light code
-        # create cursor
-        conn = create_connection()
-        c = conn.cursor()
-
-        # execute
-        c.execute("INSERT INTO users (name, email, username, password) VALUES (?,?,?,?)", (name,email,username,password))
-
-        #commit to DB
-
-        conn.commit()
-
-        # close connection
-        conn.close()
-'''
-
-
-
-
-
 
 # user login
 @app.route('/login', methods=['GET','POST'])
@@ -147,7 +129,7 @@ def login():
             else:
                 error='Błedne dane logowania'
                 return render_template('login.html',error=error)
-                #conn.close()
+
 
 
         else:
@@ -157,21 +139,6 @@ def login():
 
 
     return render_template('login.html')
-
-'''sql light code
-        conn = create_connection()
-        # create cursor
-        c = conn.cursor()
-
-        # get user by username
-        # execute
-
-        result=c.execute("SELECT * FROM users WHERE username=?", (username,))
-
-        data = c.fetchone()
-'''
-
-
 
 
 @app.route('/')
@@ -186,34 +153,6 @@ def index():
 
 
 
-'''
-    
- 
-    # sql light code -create cursor
-        conn = create_connection()
-        # create cursor
-        c = conn.cursor()
-
-        # get articles
-
-        result = c.execute("SELECT * from items")
-
-    #if result:
-
-    
-        #articles = c.fetchall()
-
-    #return render_template('index.html', articles=articles)
-else:
-        msg = "Nie ma żadnych wpisów"
-    return render_template('index.html', msg=msg)
-
-
-        #conn.close()
-'''
-
-
-
 
 @app.route('/about')
 def about():
@@ -221,15 +160,6 @@ def about():
 
 @app.route('/articles')
 def articles():
-    '''# create cursor
-    conn = create_connection()
-    # create cursor
-    c = conn.cursor()
-
-    # get articles
-
-    result = c.execute("SELECT * from items")
-    '''
 
     result=len(Items.query.all())
     if result>0:
@@ -241,92 +171,10 @@ def articles():
         msg="Nie znaleziono wpisów"
     return render_template('articles.html',msg=msg)
 
-    #conn.close()
-
-@app.route('/edit_article/<string:id>', methods=['GET','POST'])
-def edit_article(id):
-    '''# create cursor
-    conn = create_connection()
-    # create cursor
-    c = conn.cursor()
-
-    # get articles
-
-    result = c.execute("SELECT * from items WHERE id=?", (id,))
-
-
-    '''
-
-    result=Items.query.filter_by(id=id).all()
-    if len(result)>0:
-        #article = c.fetchone()
-        article = Items.query.filter_by(id=id).first()
-        form=ArticleForm(request.form)
-
-        #form.title.data=article[1]
-        #form.body.data=article[2]
-        #form.publish.data=article[5]
-
-        form.title.data = article.title
-        form.body.data = article.body
-        form.publish.data = article.publish
-
-        if request.method == 'POST':
-            title = request.form['title']
-            body = request.form['body']
-            publish=request.form.get('publish')
-            create_date = date.today()
-
-           # print(publish)
-            if publish != None:
-                publish=1
-            else:
-                publish=0
-
-            article.title = title
-            article.body = body
-            article.publish = publish
-            article.create_date=create_date
-            db.session.commit()
-
-            #print(publish)
-
-
-            # create cursor
-           # conn = create_connection()
-            #c = conn.cursor()
-
-
-
-
-            '''c.execute("UPDATE items SET title=?, body =?, author =?, create_date =?, publish =? WHERE id=?",(title,body,session['username'],create_date,publish,id))
-            conn.commit()
-            conn.close()
-            '''
-            flash("Wpis zaktualizowany", "success")
-
-            return redirect(url_for('dashboard'))
-
-        return render_template('edit_article.html', form=form)
-    else:
-        msg="Nie znaleziono wpisu"
-    return render_template('articles.html',msg=msg)
-
-
 
 
 @app.route('/delete_article/<string:id>', methods=['POST'])
 def delete_article(id):
-    '''# create cursor
-    conn = create_connection()
-    # create cursor
-    c = conn.cursor()
-
-    # delete article
-
-    result = c.execute("DELETE from items WHERE id=?", (id,))
-    conn.commit()
-    conn.close()'''
 
     article = Items.query.filter_by(id=id).first()
     db.session.delete(article)
@@ -337,28 +185,13 @@ def delete_article(id):
     return redirect(url_for('dashboard'))
 
 
-
-
-
-
-
 @app.route('/articles/<string:id>/')
 def article(id):
-    '''
-    # create cursor
-    conn = create_connection()
-    # create cursor
-    c = conn.cursor()
-
-    # get article
-
-    result = c.execute("SELECT * from items WHERE id=?",(id,))
-    '''
     result=Items.query.filter_by(id=id).all()
 
 
     if len(result)>0:
-        #article = c.fetchone()
+
         article = Items.query.filter_by(id=id).first()
 
         return render_template('article.html', article=article)
@@ -369,25 +202,15 @@ def article(id):
 def dashboard():
     if session['logged_in']==True:
 
-        '''#create cursor
-        conn = create_connection()
-        # create cursor
-        c = conn.cursor()
-
-        # get articles
-
-        result = c.execute("SELECT * from items")
-        '''
         result=Items.query.all()
         if len(result)>0:
-           # articles=c.fetchall()
+
            articles = Items.query.all()
            return render_template('dashboard.html', articles=articles)
         else:
             message='Nie znaleziono artykułu'
             return render_template('dashboard.html', msg=message)
 
-        #conn.close()
     else:
         flash('Brak autoryzacji, proszę się zalogować', 'danger')
         return redirect(url_for('login'))
@@ -399,43 +222,6 @@ def logout():
     flash('Jesteś wylogowany', 'success')
     return redirect(url_for('login'))
 
-
-@app.route('/add_article', methods=["POST","GET"])
-def add_article():
-    if session['logged_in']==True:
-        form=ArticleForm(request.form)
-        if request.method=='POST' and form.validate():
-            title=form.title.data
-            body=form.body.data
-            create_date = date.today()
-            publish=form.publish.data
-
-            '''#create cursor
-            conn = create_connection()
-            c = conn.cursor()
-            c.execute("INSERT INTO items(title,body,author,publish, create_date) VALUES (?,?,?,?,?)", (title,body, session['username'],publish, create_date))
-            conn.commit()
-            conn.close()'''
-
-            item = Items(
-                title=title,
-                body=body,
-                author=session['username'],
-                publish=publish,
-                create_date=create_date
-
-            )
-            db.session.add(item)
-            db.session.commit()
-            flash('Wpis stworzony','success')
-            return redirect(url_for('dashboard'))
-
-        return render_template('add_article.html',form=form)
-    else:
-        flash('Brak autoryzacji, proszę się zalogować', 'danger')
-        return redirect(url_for('login'))
-
-# próba
 
 
 @app.route('/render_article/<string:id>', methods=["POST", "GET"])
@@ -449,10 +235,14 @@ def render_article(id):
                 create_date = date.today()
                 publish = form.publish.data
 
+
+                user_logged = User.query.filter_by(username=session['username']).first()
+                print(user_logged.username)
+
                 item = Items(
                     title=title,
                     body=body,
-                    author=session['username'],
+                    author=user_logged,
                     publish=publish,
                     create_date=create_date
 
@@ -492,7 +282,7 @@ def render_article(id):
                     publish = request.form.get('publish')
                     create_date = date.today()
 
-                # print(publish)
+
                     if publish != None:
                         publish = 1
                     else:
@@ -502,6 +292,7 @@ def render_article(id):
                     article.body = body
                     article.publish = publish
                     article.create_date = create_date
+                    article.author=User.query.filter_by(username=session['username']).first()
                     db.session.commit()
 
                     flash("Wpis zaktualizowany", "success")

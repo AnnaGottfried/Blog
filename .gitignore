@@ -3,3 +3,6 @@ venv/
 db/articles.db
 db/users.db
 __pycache__/
+templates/edit_article.html
+templates/add_article.html
+pomocnicze.py
