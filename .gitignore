@@ -2,6 +2,7 @@
 venv/
 db/articles.db
 __pycache__/
+db/users.db
 templates/edit_article.html
 templates/add_article.html
 pomocnicze.py
