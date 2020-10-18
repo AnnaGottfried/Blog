@@ -315,4 +315,4 @@ def render_article(id):
 
 
 if __name__=='main':
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
