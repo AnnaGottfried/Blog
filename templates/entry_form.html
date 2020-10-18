@@ -1,9 +1,17 @@
 {% extends 'layout.html' %}
 
 {% block body %}
+
+{% if type=="add" %}
     <h1> Dodaj wpis </h1>
+{% else %}
+    <h1> Edytuj wpis </h1>
+
+{% endif %}
  {% from 'includes/_formhelpers.html' import render_field %}
-    <form method="post" action="">
+    <form method="POST" action="">
+
+        {{form.hidden_tag()}}
         <div class="form-group">
             {{render_field(form.title,class="form-control")}}
 

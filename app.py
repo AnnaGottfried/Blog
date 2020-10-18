@@ -1,10 +1,11 @@
 from flask import Flask, render_template,flash, redirect, request, url_for, session
-from wtforms import Form,StringField,TextAreaField,PasswordField, BooleanField, validators
+from flask_wtf import FlaskForm
+from wtforms import StringField,TextAreaField,PasswordField, BooleanField, validators
 from passlib.hash import sha256_crypt
 from datetime import date
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-
+from wtforms.validators import DataRequired
 
 app = Flask(__name__)
 app.secret_key = "super secret key"
@@ -26,52 +27,75 @@ class Items(db.Model):
     __tablename__ = 'items'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.Text)
-    body = db.Column(db.String(500), index=True, unique=False)
-    author= db.Column(db.String(100), index=True, unique=True)
+    body = db.Column(db.String(500), index=True)
+    author= db.Column(db.String(100), index=True)
     create_date = db.Column(db.String(128))
-    publish= db.Column(db.String(2), unique=False)
-
+    publish= db.Column(db.Boolean(), default=False, nullable=True)
 
 migrate = Migrate(app, db)
 
 # registration form
-class RegisterForm(Form):
+class RegisterForm(FlaskForm):
     name=StringField('Imię i nazwisko ',[validators.Length(min=1,max=50)])
     username = StringField('Nazwa użytkownika', [validators.Length(min=4, max=25)])
     email = StringField('Email', [validators.Length(min=6, max=50)])
-    password = PasswordField('Hasło', [validators.data_required(), validators.equal_to('confirm', message='password do not match')])
+    password = PasswordField('Hasło', [validators.data_required(), validators.equal_to('confirm', message='Hasło się nie zgadza')])
     confirm = PasswordField('Potwierdź hasło')
 
 # blog form
-class ArticleForm(Form):
-    title=StringField('Tytuł',[validators.Length(min=1,max=50)])
-    body = TextAreaField('Treść', [validators.Length(min=30)])
+class ArticleForm(FlaskForm):
+    title=StringField('Tytuł',validators=[DataRequired()])
+    body = TextAreaField('Treść', validators=[DataRequired()])
     publish =BooleanField('Publikacja')
 
 
 @app.route('/register', methods=['GET','POST'])
 def register():
     form = RegisterForm(request.form)
-    if request.method=="POST" and form.validate():
-        name=form.name.data
-        email=form.email.data
-        username=form.username.data
-        password=sha256_crypt.encrypt(str(form.password.data))
 
-        # adding user to database
-        user = User(
-            name=name,
-            email=email,
-            username=username,
-            password=password,
+    result_name = User.query.filter_by(name=form.name.data).all()
+    result_username = User.query.filter_by(username=form.username.data).all()
+    result_email = User.query.filter_by(email=form.email.data).all()
 
-        )
-        db.session.add(user)
-        db.session.commit()
-        flash('Jesteś już zarejestrowany - możesz się logować', 'success')
-        return redirect(url_for("index"))
+    result= len(result_name) +len(result_username)+len(result_email)
 
-    return render_template('register.html', form=form)
+    errors = None
+
+    if request.method=="POST" and  result==0:
+        if form.validate_on_submit():
+
+            name=form.name.data
+            email=form.email.data
+            username=form.username.data
+            password=sha256_crypt.encrypt(str(form.password.data))
+
+        # adding user to database if the user does not exist
+            user = User(
+                name=name,
+                email=email,
+                username=username,
+                password=password,
+
+            )
+            db.session.add(user)
+            db.session.commit()
+            flash('Jesteś już zarejestrowany - możesz się logować', 'success')
+            return redirect(url_for("index"))
+        else:
+            errors = form.errors
+            return render_template('register.html', errors=errors, form=form)
+
+    else:
+        if len(result_name)>0:
+            flash('Użytkownik o tym imieniu i nazwisku już istnieje', 'danger')
+        if len(result_username)>0:
+            flash('Nazwa użytkownika taka już istnieje', 'danger')
+
+        if len(result_email)>0:
+            flash('Email taki już istnieje', 'danger')
+
+        errors=form.errors
+        return render_template('register.html', errors=errors,form=form)
 
 '''  sql light code
         # create cursor
@@ -438,7 +462,9 @@ def render_article(id):
                 flash('Wpis stworzony', 'success')
                 return redirect(url_for('dashboard'))
 
-            return render_template('entry_form.html', form=form,type="add")
+            else:
+                errors = form.errors
+                return render_template('entry_form.html', form=form,errors=errors, type="add")
         else:
             flash('Brak autoryzacji, proszę się zalogować', 'danger')
             return redirect(url_for('login'))
@@ -453,32 +479,44 @@ def render_article(id):
             form.body.data = article.body
             form.publish.data = article.publish
 
+            errors = None
+
             if request.method == 'POST':
-                title = request.form['title']
-                body = request.form['body']
-                publish = request.form.get('publish')
-                create_date = date.today()
+
+                print(form.validate_on_submit())
+
+                if form.validate_on_submit():
+
+                    title = request.form['title']
+                    body = request.form['body']
+                    publish = request.form.get('publish')
+                    create_date = date.today()
 
                 # print(publish)
-                if publish != None:
-                    publish = 1
+                    if publish != None:
+                        publish = 1
+                    else:
+                        publish = 0
+
+                    article.title = title
+                    article.body = body
+                    article.publish = publish
+                    article.create_date = create_date
+                    db.session.commit()
+
+                    flash("Wpis zaktualizowany", "success")
+
+                    return redirect(url_for('dashboard'))
                 else:
-                    publish = 0
+                    errors = form.errors
+                    return render_template('entry_form.html', errors=errors, form=form, type="edit")
 
-                article.title = title
-                article.body = body
-                article.publish = publish
-                article.create_date = create_date
-                db.session.commit()
-
-                flash("Wpis zaktualizowany", "success")
-
-                return redirect(url_for('dashboard'))
-
-            return render_template('entry_form.html', form=form,type="edit")
+            else:
+                errors = form.errors
+                return render_template('entry_form.html',errors=errors, form=form,type="edit")
         else:
             msg = "Nie znaleziono wpisu"
-        return render_template('articles.html', msg=msg)
+            return render_template('articles.html',msg=msg)
 
 
 if __name__=='main':

@@ -2,7 +2,12 @@
 
 {% block body %}
     <h1> Wpisy </h1>
+    {% if msg|length %}
     <ul class="list-group">
+        <div class="alert alert-danger" role="alert">
+        {{msg}}
+        </div>
+     {% endif %}
          {% for article in articles %}
             {% if article.publish==1 %}
            <li class="list-group-item"><a href="articles/{{article.id}}"> {{article.title}} </a></li>
