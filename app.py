@@ -6,6 +6,10 @@ from datetime import date
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from wtforms.validators import DataRequired
+import os
+
+
+port = int(os.environ.get('PORT', 5000))
 
 app = Flask(__name__)
 app.secret_key = "super secret key"
@@ -311,4 +315,4 @@ def render_article(id):
 
 
 if __name__=='main':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=port, debug=True)
