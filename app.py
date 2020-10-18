@@ -7,14 +7,13 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from wtforms.validators import DataRequired
 import os
+from config import Config
 
 
 port = int(os.environ.get('PORT', 5000))
 
 app = Flask(__name__)
-app.secret_key = "super secret key"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/users.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+app.config.from_object(Config)
 db = SQLAlchemy(app)
 
 # models
