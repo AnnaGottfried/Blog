@@ -2,6 +2,7 @@ import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+
 class Config:
    SECRET_KEY = "super secret key"
    SQLALCHEMY_DATABASE_URI = (
@@ -9,3 +10,9 @@ class Config:
    )
    SQLALCHEMY_TRACK_MODIFICATIONS = True
 
+
+# class Production:
+#    SECRET_KEY = os.envio
+
+class TestConfig(Config):
+   SQLALCHEMY_DATABASE_URI = ('sqlite:///')
